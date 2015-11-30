@@ -25,6 +25,8 @@
 #include "threading/MsgThread.h"
 #include <DebugLogger.h>
 
+#include <ostream>
+
 #include <boost/bind.hpp>
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
@@ -34,6 +36,8 @@
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/error.hpp>
 #include <assert.h>
+
+#include <ostream>
 
 // 16K slots, each 16K in size
 #define QUEUE_CAPACITY_MED (1024*16)
@@ -103,8 +107,8 @@ typedef boost::lockfree::queue<workitem_large,
 class TcpSession: public boost::enable_shared_from_this<TcpSession> {
 public:
 	TcpSession() :
-			io_service_(), work_(io_service_), socket_(io_service_), connection_active_(
-					false), session_active_(false) {
+			io_service_(), work_(io_service_), socket_(io_service_),
+			connection_active_(false), session_active_(false) {
 	}
 
 	~TcpSession() {
@@ -113,7 +117,6 @@ public:
 
 	bool write(const std::string attrs, const ODesc &buffer) {
 		bool ret = true;
-
 		if (connection_active_) {
 			int t_size = (buffer.Len() + HEADER_SIZE + attrs.length());
 			if (t_size <= WORK_ITEM_BUFFER_SIZE_MED) {
@@ -127,16 +130,27 @@ public:
 		return ret;
 	}
 	void Start() {
-		run_thread_ = boost::thread(
-				boost::bind(&TcpSession::Run, shared_from_this()));
+		run_thread_ = boost::thread(boost::bind(&TcpSession::Run, shared_from_this()));
 	}
-	void Stop() {
+	void Restart() {
+		session_active_ = true;
+		connection_active_ = true;
+		CreateClientThread();
+	}
+	void Stop(bool io_service_stop=true) {
 		connection_active_ = false;
 		try {
+			boost::system::error_code ec;
+			socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
 			socket_.close();
 		} catch (...) {
+			std::cout << "PS_tcplog - Exception in shutdown for Stop()" << std::endl;
 		}
-		io_service_.stop();
+
+		if(io_service_stop) {
+			io_service_.stop();
+			io_service_.reset();
+		}
 	}
 	void Kill() {
 		session_active_ = false;
@@ -144,21 +158,19 @@ public:
 	}
 protected:
 private:
+	void CreateClientThread() {
+		tg.add_thread(new boost::thread(boost::bind(&TcpSession::clientThread, shared_from_this())));
+	}
 	void Run() {
 		session_active_ = true;
 		while (session_active_) {
 			connection_active_ = true;
 			{
-				boost::thread_group g;
-				g.add_thread(
-						new boost::thread(
-								boost::bind(&TcpSession::clientThread,
-										shared_from_this())));
-				g.add_thread(
-						new boost::thread(
-								boost::bind(&boost::asio::io_service::run,
-										&io_service_)));
-				g.join_all();
+				CreateClientThread();
+				tg.add_thread(
+						new boost::thread(boost::bind(&boost::asio::io_service::run,
+											&io_service_)));
+				tg.join_all();
 			}
 		}
 	}
@@ -166,55 +178,72 @@ private:
 		boost::this_thread::sleep(boost::posix_time::seconds(10));
 	}
 	void exError() {
+		std::cout << "PS_tcplog - exError()" << std::endl;
 		Stop();
 		wait();
+		Restart();
 	}
 	void exError(std::exception& e) {
+		std::cout << "PS_tcplog - exError()" << std::endl;
 		Stop();
 		wait();
+		Restart();
 	}
 	void asioError(const boost::system::error_code & error) {
-		Stop();
-		wait();
+		switch(error.value()) {
+			case boost::system::errc::connection_refused:
+			case boost::system::errc::connection_aborted:
+			case boost::system::errc::broken_pipe: {
+				wait();
+				Restart();
+			}
+				break;
+			case boost::system::errc::already_connected: {
+				Stop(false);
+				wait();
+				Restart();
+			}
+				break;
+			default: {
+				Stop();
+				wait();
+			}
+				break;
+		}
 	}
 	void clientThread() {
 		boost::system::error_code error;
 		workitem_med val;
 		workitem_large val2;
 		try {
-
-			string tcphost = string(
-					(const char *) BifConst::PS_tcplog::tcphost->Bytes(),
-					BifConst::PS_tcplog::tcphost->Len());
+			string tcphost = string((const char *) BifConst::PS_tcplog::tcphost->Bytes(),
+									BifConst::PS_tcplog::tcphost->Len());
 			int tcpport = BifConst::PS_tcplog::tcpport;
-			socket_.connect(
-					boost::asio::ip::tcp::endpoint(
-							boost::asio::ip::address::from_string(tcphost),
-							tcpport), error);
+			socket_.set_option(boost::asio::socket_base::reuse_address(true), error);
+			socket_.connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(tcphost), tcpport), error);
 			if (error) {
+				connection_active_ = false;
+				session_active_ = false;
 				asioError(error);
 			} else {
 				while (connection_active_) {
 					bool noWork = true;
 					if (workq_med.pop(val)) {
 						noWork = false;
-						boost::asio::write(socket_,
-								boost::asio::buffer(val.buf, val.len), error);
+						boost::asio::write(socket_,	boost::asio::buffer(val.buf, val.len), error);
 						if (error) {
 							asioError(error);
 						}
 					}
 					if (workq_large.pop(val2)) {
 						noWork = false;
-						boost::asio::write(socket_,
-								boost::asio::buffer(val2.buf, val2.len), error);
+						boost::asio::write(socket_,	boost::asio::buffer(val2.buf, val2.len), error);
 						if (error) {
 							asioError(error);
 						}
 					}
 					if (noWork) {
-						boost::this_thread::sleep(
-								boost::posix_time::milliseconds(100));
+						boost::this_thread::sleep(boost::posix_time::milliseconds(100));
 					}
 				}
 			}
@@ -224,6 +253,8 @@ private:
 			exError();
 		}
 	}
+
+	boost::thread_group tg;
 	workqueue_med workq_med;
 	workqueue_large workq_large;
 	boost::asio::io_service io_service_;
