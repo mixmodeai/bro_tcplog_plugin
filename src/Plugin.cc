@@ -41,7 +41,7 @@ void Plugin::InitPostScript() {
 }
 void Plugin::Done() {
 	if (session) {
-		session->Kill();
+		session->Drain();
 	}
 	::plugin::Plugin::Done();
 }

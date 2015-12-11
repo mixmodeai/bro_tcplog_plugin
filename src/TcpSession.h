@@ -108,7 +108,7 @@ class TcpSession: public boost::enable_shared_from_this<TcpSession> {
 public:
 	TcpSession() :
 			io_service_(), work_(io_service_), socket_(io_service_),
-			connection_active_(false), session_active_(false) {
+			connection_active_(false), session_active_(false), drain_and_done_(false) {
 	}
 
 	~TcpSession() {
@@ -117,7 +117,8 @@ public:
 
 	bool write(const std::string attrs, const ODesc &buffer) {
 		bool ret = true;
-		if (connection_active_) {
+
+		if (connection_active_ && !drain_and_done_) {
 			int t_size = (buffer.Len() + HEADER_SIZE + attrs.length());
 			if (t_size <= WORK_ITEM_BUFFER_SIZE_MED) {
 				workq_med.push(workitem_struct_med(attrs, buffer));
@@ -127,6 +128,7 @@ public:
 				ret = false;
 			}
 		}
+
 		return ret;
 	}
 	void Start() {
@@ -155,6 +157,11 @@ public:
 	void Kill() {
 		session_active_ = false;
 		Stop();
+	}
+	void Drain() {
+		drain_and_done_ = true;
+		io_service_.stop();
+		tg.join_all();
 	}
 protected:
 private:
@@ -228,6 +235,7 @@ private:
 			} else {
 				while (connection_active_) {
 					bool noWork = true;
+
 					if (workq_med.pop(val)) {
 						noWork = false;
 						boost::asio::write(socket_,	boost::asio::buffer(val.buf, val.len), error);
@@ -243,7 +251,12 @@ private:
 						}
 					}
 					if (noWork) {
-						boost::this_thread::sleep(boost::posix_time::milliseconds(100));
+						if(drain_and_done_) {
+							Kill();
+							break;
+						} else {
+							boost::this_thread::sleep(boost::posix_time::milliseconds(100));
+						}
 					}
 				}
 			}
@@ -262,6 +275,7 @@ private:
 	tcp::socket socket_;
 	bool connection_active_;
 	bool session_active_;
+	bool drain_and_done_;
 	boost::thread run_thread_;
 };
 }
