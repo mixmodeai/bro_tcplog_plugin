@@ -118,7 +118,7 @@ public:
 	bool write(const std::string attrs, const ODesc &buffer) {
 		bool ret = true;
 
-		if (connection_active_ && !drain_and_done_) {
+		if (connection_active_) {
 			int t_size = (buffer.Len() + HEADER_SIZE + attrs.length());
 			if (t_size <= WORK_ITEM_BUFFER_SIZE_MED) {
 				workq_med.push(workitem_struct_med(attrs, buffer));
@@ -160,8 +160,10 @@ public:
 	}
 	void Drain() {
 		drain_and_done_ = true;
-		io_service_.stop();
+		session_active_ = false;
 		tg.join_all();
+		Kill();
+
 	}
 protected:
 private:
@@ -228,6 +230,7 @@ private:
 			int tcpport = BifConst::PS_tcplog::tcpport;
 			socket_.set_option(boost::asio::socket_base::reuse_address(true), error);
 			socket_.connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(tcphost), tcpport), error);
+
 			if (error) {
 				connection_active_ = false;
 				session_active_ = false;
@@ -252,7 +255,7 @@ private:
 					}
 					if (noWork) {
 						if(drain_and_done_) {
-							Kill();
+							io_service_.stop();
 							break;
 						} else {
 							boost::this_thread::sleep(boost::posix_time::milliseconds(100));
