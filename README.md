@@ -1,3 +1,4 @@
+![PacketSled Logo](https://packetsled.com/wp-content/themes/freshbiz/img/packetsled-logo.png)
 PS::tcplog - a Bro plugin to stream logs over tcp
 ==================================================================
 
