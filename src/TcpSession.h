@@ -120,9 +120,9 @@ public:
 
 		if (connection_active_) {
 			int t_size = (buffer.Len() + HEADER_SIZE + attrs.length());
-			if (t_size <= WORK_ITEM_BUFFER_SIZE_MED) {
+			if (t_size < WORK_ITEM_BUFFER_SIZE_MED) {
 				workq_med.push(workitem_struct_med(attrs, buffer));
-			} else if (t_size <= WORK_ITEM_BUFFER_SIZE_LARGE) {
+			} else if (t_size < WORK_ITEM_BUFFER_SIZE_LARGE) {
 				workq_large.push(workitem_struct_large(attrs, buffer));
 			} else {
 				ret = false;
