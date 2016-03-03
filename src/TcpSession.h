@@ -37,7 +37,7 @@
 #include <boost/asio/error.hpp>
 #include <assert.h>
 
-#include <ostream>
+#include <iostream>
 
 // 16K slots, each 16K in size
 #define QUEUE_CAPACITY_MED (1024*16)
@@ -46,6 +46,9 @@
 // 16 slots, each 1M in size
 #define QUEUE_CAPACITY_LARGE (16)
 #define WORK_ITEM_BUFFER_SIZE_LARGE (1024*1024)
+
+// Timeout in milliseconds (10s)
+const unsigned int timeout_ms = 10000;
 
 #define HEADER_SIZE (sizeof(uint32_t))
 
@@ -109,6 +112,14 @@ public:
 	TcpSession() :
 			io_service_(), work_(io_service_), socket_(io_service_),
 			connection_active_(false), session_active_(false), drain_and_done_(false) {
+
+		struct timeval tv;
+		tv.tv_sec  = timeout_ms / 1000;
+		tv.tv_usec = timeout_ms % 1000;
+
+		setsockopt(socket_.native(), SOL_SOCKET, SO_RCVTIMEO,  &tv, sizeof(tv));
+		setsockopt(socket_.native(), SOL_SOCKET, SO_SNDTIMEO,  &tv, sizeof(tv));
+		setsockopt(socket_.native(), SOL_SOCKET, SO_KEEPALIVE, &tv, sizeof(tv));
 	}
 
 	~TcpSession() {
@@ -201,8 +212,11 @@ private:
 	void asioError(const boost::system::error_code & error) {
 		switch(error.value()) {
 			case boost::system::errc::connection_refused:
-			case boost::system::errc::connection_aborted:
-			case boost::system::errc::broken_pipe: {
+			case boost::asio::error::connection_aborted:
+			case boost::asio::error::connection_reset:
+			case boost::asio::error::operation_aborted:
+			case boost::system::errc::broken_pipe:
+			case boost::asio::error::eof: {
 				wait();
 				Restart();
 			}
@@ -229,6 +243,8 @@ private:
 									BifConst::PS_tcplog::tcphost->Len());
 			int tcpport = BifConst::PS_tcplog::tcpport;
 			socket_.set_option(boost::asio::socket_base::reuse_address(true), error);
+			socket_.set_option(boost::asio::socket_base::keep_alive(true), error);
+
 			socket_.connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(tcphost), tcpport), error);
 
 			if (error) {
