@@ -18,31 +18,42 @@
 
 @load base/frameworks/cluster
 @load policy/misc/loaded-scripts
+@load base/frameworks/communication
 
 module PS_tcplog;
 
 export {
+		## IP Address for PS::tcplog
         const tcphost = "127.0.0.1" &redef;
+        ## Port number for PS::tcplog
         const tcpport = 1514 &redef;
+        ## Sensor identifier
         const probeid = 0 &redef;
+        ## Environment identifier
         const envid = 0 &redef;
+        ## Enabled flag
         const enabled = T &redef;
+        ## Write logfiles to disk in addition to streaming them
         const logfiles = F &redef;
+        ## Log file IDs to exclude
         const excluded_log_ids: set[Log::ID] &redef;
+        ## Log file IDs to write to disk
+        const force_to_disk_log_ids: set[Log::ID] &redef;
 }
 
 redef PS_tcplog::enabled = ( Cluster::local_node_type() == Cluster::MANAGER || Cluster::local_node_type() == Cluster::NONE );
 
 event bro_init() &priority=-5
         {
+        Log::disable_stream(Communication::LOG);
         for ( sid in Log::active_streams )
                 {
                 if( sid !in excluded_log_ids ) {
-                        print sid;
+                        #print sid;
                         local filt: Log::Filter = [$name = "ps-tcplog-filter",
                                                      $writer = Log::WRITER_TCPLOG];
                         Log::add_filter(sid, filt);
-                        if(!logfiles)
+                        if(!logfiles && (sid !in force_to_disk_log_ids))
                                 {
                                 Log::remove_filter(sid, "default");
                                 }

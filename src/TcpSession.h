@@ -143,21 +143,24 @@ public:
 		return ret;
 	}
 	void Start() {
+		std::cout << "{\"opcode\":\"PS_tcplog\", \"msg\":\"Start\"}" << std::endl;
 		run_thread_ = boost::thread(boost::bind(&TcpSession::Run, shared_from_this()));
 	}
 	void Restart() {
+		std::cout << "{\"opcode\":\"PS_tcplog\", \"msg\":\"Restart\"}" << std::endl;
 		session_active_ = true;
 		connection_active_ = true;
 		CreateClientThread();
 	}
 	void Stop(bool io_service_stop=true) {
+		std::cout << "{\"opcode\":\"PS_tcplog\", \"msg\":\"Stop\", \"io_service_stop\": "<< io_service_stop<<"}" << std::endl;
 		connection_active_ = false;
 		try {
 			boost::system::error_code ec;
 			socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
 			socket_.close();
 		} catch (...) {
-			std::cout << "PS_tcplog - Exception in shutdown for Stop()" << std::endl;
+			std::cout << "{\"opcode\":\"PS_tcplog\", \"msg\":\"StartException\"}" << std::endl;
 		}
 
 		if(io_service_stop) {
@@ -166,10 +169,12 @@ public:
 		}
 	}
 	void Kill() {
+		std::cout << "{\"opcode\":\"PS_tcplog\", \"msg\":\"Kill\"}" << std::endl;
 		session_active_ = false;
 		Stop();
 	}
 	void Drain() {
+		std::cout << "{\"opcode\":\"PS_tcplog\", \"msg\":\"Drain\"}" << std::endl;
 		drain_and_done_ = true;
 		session_active_ = false;
 		tg.join_all();
@@ -182,6 +187,7 @@ private:
 		tg.add_thread(new boost::thread(boost::bind(&TcpSession::clientThread, shared_from_this())));
 	}
 	void Run() {
+		std::cout << "{\"opcode\":\"PS_tcplog\", \"msg\":\"Run\"}" << std::endl;
 		session_active_ = true;
 		while (session_active_) {
 			connection_active_ = true;
@@ -195,21 +201,23 @@ private:
 		}
 	}
 	void wait() {
+		std::cout << "{\"opcode\":\"PS_tcplog\", \"msg\":\"Wait\"}" << std::endl;
 		boost::this_thread::sleep(boost::posix_time::seconds(10));
 	}
 	void exError() {
-		std::cout << "PS_tcplog - exError()" << std::endl;
+		std::cout << "{\"opcode\":\"PS_tcplog\", \"msg\":\"exError\"}" << std::endl;
 		Stop();
 		wait();
 		Restart();
 	}
 	void exError(std::exception& e) {
-		std::cout << "PS_tcplog - exError()" << std::endl;
+		std::cout << "{\"opcode\":\"PS_tcplog\", \"msg\":\"exError\", \"what\":\""<< e.what()<<"\"}" << std::endl;
 		Stop();
 		wait();
 		Restart();
 	}
 	void asioError(const boost::system::error_code & error) {
+		std::cout << "{\"opcode\":\"PS_tcplog\", \"msg\":\"asioError\", \"error\":\""<< error.value() <<"\"}" << std::endl;
 		switch(error.value()) {
 			case boost::system::errc::connection_refused:
 			case boost::asio::error::connection_aborted:
@@ -234,6 +242,18 @@ private:
 				break;
 		}
 	}
+		void writeSessionHeader() {
+    		boost::system::error_code error;
+    		ODesc sessionHeader;
+    		std::stringstream ss;
+    		ss << "{\"probe\": " << BifConst::PS_tcplog::probeid << ", \"envid\": " << BifConst::PS_tcplog::envid << ", \"log\": \"ps_tcplog_session\"}";
+    		sessionHeader.AddRaw(ss.str());
+    		workitem_struct_med sessionHeaderMessage("", sessionHeader);
+    		boost::asio::write(socket_,	boost::asio::buffer(sessionHeaderMessage.buf, sessionHeaderMessage.len), error);
+    		if (error) {
+    			asioError(error);
+    		}
+    	}
 	void clientThread() {
 		boost::system::error_code error;
 		workitem_med val;
@@ -247,12 +267,17 @@ private:
 
 			socket_.connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(tcphost), tcpport), error);
 
+			//std::cout << "PS_tcplog - Successfully connected." << std::endl;
+
 			if (error) {
 				connection_active_ = false;
 				session_active_ = false;
 				asioError(error);
 			} else {
+				writeSessionHeader();
+
 				while (connection_active_) {
+
 					bool noWork = true;
 
 					if (workq_med.pop(val)) {

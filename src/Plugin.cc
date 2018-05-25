@@ -29,9 +29,11 @@ Plugin plugin;
 Plugin::Plugin() :
 		session() {
 }
+
 Plugin::~Plugin() {
 	session.reset();
 }
+
 void Plugin::InitPostScript() {
 	::plugin::Plugin::InitPostScript();
 	if (BifConst::PS_tcplog::enabled) {
@@ -39,12 +41,14 @@ void Plugin::InitPostScript() {
 		session->Start();
 	}
 }
+
 void Plugin::Done() {
 	if (session) {
 		session->Drain();
 	}
 	::plugin::Plugin::Done();
 }
+
 WriterBackend* Plugin::Instantiate(WriterFrontend* frontend) {
 	return new ::logging::writer::TcpLog(frontend, plugin.GetSession());
 }
