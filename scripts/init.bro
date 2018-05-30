@@ -42,6 +42,8 @@ export {
 }
 
 redef PS_tcplog::enabled = ( Cluster::local_node_type() == Cluster::LOGGER || Cluster::local_node_type() == Cluster::MANAGER || Cluster::local_node_type() == Cluster::NONE );
+redef PS_tcplog::envid = getenv("PROBE_ENV");
+redef PS_tcplog::probeid = getenv("PROBE_ID");
 
 event bro_init() &priority=-5
         {
