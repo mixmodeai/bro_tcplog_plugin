@@ -23,7 +23,7 @@
 module PS_tcplog;
 
 export {
-		## IP Address for PS::tcplog
+        ## IP Address for PS::tcplog
         const tcphost = "127.0.0.1" &redef;
         ## Port number for PS::tcplog
         const tcpport = 1514 &redef;
@@ -39,9 +39,14 @@ export {
         const excluded_log_ids: set[Log::ID] &redef;
         ## Log file IDs to write to disk
         const force_to_disk_log_ids: set[Log::ID] &redef;
+
+        ## Flag for dependent scripts to check that tcplog plugin is loaded
+        global TCPLOG_PLUGIN: bool = T &redef;
 }
 
 redef PS_tcplog::enabled = ( Cluster::local_node_type() == Cluster::LOGGER || Cluster::local_node_type() == Cluster::MANAGER || Cluster::local_node_type() == Cluster::NONE );
+redef PS_tcplog::tcphost = getenv("EXPORT_ADDR");
+redef PS_tcplog::tcpport = getenv("EXPORT_PORT");
 redef PS_tcplog::envid = getenv("PROBE_ENV");
 redef PS_tcplog::probeid = getenv("PROBE_ID");
 
