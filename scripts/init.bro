@@ -41,7 +41,7 @@ export {
         const force_to_disk_log_ids: set[Log::ID] &redef;
 }
 
-redef PS_tcplog::enabled = ( Cluster::local_node_type() == Cluster::MANAGER || Cluster::local_node_type() == Cluster::NONE );
+redef PS_tcplog::enabled = ( Cluster::local_node_type() == Cluster::LOGGER || Cluster::local_node_type() == Cluster::MANAGER || Cluster::local_node_type() == Cluster::NONE );
 
 event bro_init() &priority=-5
         {
