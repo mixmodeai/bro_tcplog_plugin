@@ -24,13 +24,13 @@ module PS_tcplog;
 
 export {
         ## IP Address for PS::tcplog
-        const tcphost = "127.0.0.1" &redef;
+        const tcphost: string = "127.0.0.1" &redef;
         ## Port number for PS::tcplog
-        const tcpport = 1514 &redef;
+        const tcpport: string = "1514" &redef;
         ## Sensor identifier
-        const probeid = 0 &redef;
+        const probeid: string = "0" &redef;
         ## Environment identifier
-        const envid = 0 &redef;
+        const envid: string = "0" &redef;
         ## Enabled flag
         const enabled = T &redef;
         ## Write logfiles to disk in addition to streaming them
@@ -46,9 +46,9 @@ export {
 
 redef PS_tcplog::enabled = ( Cluster::local_node_type() == Cluster::LOGGER || Cluster::local_node_type() == Cluster::MANAGER || Cluster::local_node_type() == Cluster::NONE );
 redef PS_tcplog::tcphost = getenv("EXPORT_ADDR");
-redef PS_tcplog::tcpport = to_count(getenv("EXPORT_PORT"));
-redef PS_tcplog::envid = to_count(getenv("PROBE_ENV"));
-redef PS_tcplog::probeid = to_count(getenv("PROBE_ID"));
+redef PS_tcplog::tcpport = getenv("EXPORT_PORT");
+redef PS_tcplog::envid = getenv("PROBE_ENV");
+redef PS_tcplog::probeid = getenv("PROBE_ID");
 
 event bro_init() &priority=-5
         {

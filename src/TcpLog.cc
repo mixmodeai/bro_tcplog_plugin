@@ -39,8 +39,8 @@ TcpLog::~TcpLog() {
 
 bool TcpLog::DoInit(const WriterInfo& info, int num_fields,
 		const threading::Field* const * fields) {
-	path = Fmt("\"probe\": %d, \"envid\": %d, \"log\": \"%s\",",
-			BifConst::PS_tcplog::probeid, BifConst::PS_tcplog::envid,
+	path = Fmt("\"probe\": %s, \"envid\": %s, \"log\": \"%s\",",
+			BifConst::PS_tcplog::probeid->CheckString(), BifConst::PS_tcplog::envid->CheckString(),
 			info.path);
 	ofstream schema_file;
 	schema_file.open(Fmt("%s.schema", info.path), ios::trunc);

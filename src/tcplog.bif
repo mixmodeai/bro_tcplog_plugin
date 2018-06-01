@@ -18,8 +18,8 @@
 module PS_tcplog;
 
 const tcphost: string;
-const tcpport: count;
-const probeid: count;
-const envid: count;
+const tcpport: string;
+const probeid: string;
+const envid: string;
 const enabled: bool;
 const logfiles: bool;

@@ -29,9 +29,9 @@ Configuration
 in local.bro:
 
     redef PS_tcplog::tcphost = string: ip address of host socket to connect to;
-    redef PS_tcplog::tcpport = integer: port to connect to;
-    redef PS_tcplog::probeid = integer: unique id of this sensor;
-    redef PS_tcplog::envid = integer: environment id of this sensor;
+    redef PS_tcplog::tcpport = string: port to connect to;
+    redef PS_tcplog::probeid = string: unique id of this sensor;
+    redef PS_tcplog::envid = string: environment id of this sensor;
     redef PS_tcplog::enabled = boolean: (T/F) whether or not plugin is enabled: default T;
     redef PS_tcplog::logfiles = boolean: (T/F) whether or not to also write logfiles to filesystem: default F;
     redef PS_tcplog::excluded_log_ids += set[Log::ID] list of log id's to exclude from tcp streaming behavior;
