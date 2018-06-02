@@ -246,7 +246,7 @@ private:
     		boost::system::error_code error;
     		ODesc sessionHeader;
     		std::stringstream ss;
-    		ss << "{\"probe\": " << BifConst::PS_tcplog::probeid << ", \"envid\": " << BifConst::PS_tcplog::envid << ", \"log\": \"ps_tcplog_session\"}";
+    		ss << "{\"probe\": " << BifConst::PS_tcplog::probeid->CheckString() << ", \"envid\": " << BifConst::PS_tcplog::envid->CheckString() << ", \"log\": \"ps_tcplog_session\"}";
     		sessionHeader.AddRaw(ss.str());
     		workitem_struct_med sessionHeaderMessage("", sessionHeader);
     		boost::asio::write(socket_,	boost::asio::buffer(sessionHeaderMessage.buf, sessionHeaderMessage.len), error);
@@ -261,7 +261,7 @@ private:
 		try {
 			string tcphost = string((const char *) BifConst::PS_tcplog::tcphost->Bytes(),
 									BifConst::PS_tcplog::tcphost->Len());
-			int tcpport = BifConst::PS_tcplog::tcpport;
+			int tcpport = atoi(BifConst::PS_tcplog::tcpport->CheckString());
 			socket_.set_option(boost::asio::socket_base::reuse_address(true), error);
 			socket_.set_option(boost::asio::socket_base::keep_alive(true), error);
 
