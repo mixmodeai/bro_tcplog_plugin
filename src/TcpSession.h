@@ -177,7 +177,8 @@ public:
 		std::cout << "{\"opcode\":\"PS_tcplog\", \"msg\":\"Drain\"}" << std::endl;
 		drain_and_done_ = true;
 		session_active_ = false;
-		tg.join_all();
+		if(connection_active_)
+			tg.join_all();
 		Kill();
 
 	}
@@ -265,8 +266,15 @@ private:
 			socket_.set_option(boost::asio::socket_base::reuse_address(true), error);
 			socket_.set_option(boost::asio::socket_base::keep_alive(true), error);
 
-			socket_.connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(tcphost), tcpport), error);
-
+			try {
+				socket_.connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(tcphost), tcpport), error);
+			} catch (std::exception& e) {
+				std::cout << "{\"opcode\":\"PS_tcplog\", \"msg\":\"exError\", \"socket_.connect() failure\":\""<< e.what()<<"\"}" << std::endl;
+				connection_active_ = false;
+				session_active_ = false;
+				//exError();
+				return;
+			}
 			//std::cout << "PS_tcplog - Successfully connected." << std::endl;
 
 			if (error) {
