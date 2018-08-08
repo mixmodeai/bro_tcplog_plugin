@@ -44,7 +44,7 @@ export {
         global TCPLOG_PLUGIN: bool = T &redef;
 }
 
-redef PS_tcplog::enabled = ( Cluster::local_node_type() == Cluster::LOGGER || Cluster::local_node_type() == Cluster::MANAGER || Cluster::local_node_type() == Cluster::NONE );
+redef PS_tcplog::enabled = ( Cluster::local_node_type() == Cluster::LOGGER || Cluster::local_node_type() == Cluster::NONE );
 redef PS_tcplog::tcphost = getenv("EXPORT_ADDR");
 redef PS_tcplog::tcpport = getenv("EXPORT_PORT");
 redef PS_tcplog::envid = getenv("PROBE_ENV");
