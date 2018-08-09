@@ -10,5 +10,5 @@ do
 done
 for size in `cat logger_stderr.log | tr ',' ' ' | awk '{print $2}' | sort -u` ; 
 do 
-    echo Size $size limit $(grep $size logger_stderr.log | tr ',' ' ' | awk '{print $5}' | sort -u | tail -1); 
+    echo Size $(echo $size | sed 's/^0*//') limit $(grep $size logger_stderr.log | tr ',' ' ' | awk '{print ($5".")+0}' | sort -u | tail -1); 
 done

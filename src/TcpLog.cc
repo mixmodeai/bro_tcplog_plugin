@@ -146,7 +146,7 @@ bool TcpLog::DoHeartbeat(double network_time, double current_time) {
 			for(size_t i = 0; i < num_profile; i++)
 			{
 				if( range[i].range_cnt)
-					Info(Fmt("range %10lu,%010lu,%010lu,%010lu", range[i].range_max, range[i].range_cnt, 
+					Info(Fmt("range %010lu,%010lu,%010lu,%010lu", range[i].range_max, range[i].range_cnt, 
 						range[i].range_avg/range[i].range_cnt, range[i].range_lmt));
 			}
 			secondCountDown = 15;
