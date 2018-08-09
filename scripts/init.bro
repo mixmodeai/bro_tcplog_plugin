@@ -42,6 +42,9 @@ export {
 
         ## Flag for dependent scripts to check that tcplog plugin is loaded
         global TCPLOG_PLUGIN: bool = T &redef;
+
+        ## Profile output enable
+        const profile_tcplog = F & redef;
 }
 
 redef PS_tcplog::enabled = ( Cluster::local_node_type() == Cluster::LOGGER || Cluster::local_node_type() == Cluster::NONE );

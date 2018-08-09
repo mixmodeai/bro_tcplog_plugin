@@ -111,7 +111,8 @@ class TcpSession: public boost::enable_shared_from_this<TcpSession> {
 public:
 	TcpSession() :
 			io_service_(), work_(io_service_), socket_(io_service_),
-			connection_active_(false), session_active_(false), drain_and_done_(false) {
+			connection_active_(false), session_active_(false), drain_and_done_(false), 
+			profile_tcplog(BifConst::PS_tcplog::profile_tcplog?true:false) {
 
 		struct timeval tv;
 		tv.tv_sec  = timeout_ms / 1000;
@@ -132,9 +133,23 @@ public:
 		if (connection_active_) {
 			int t_size = (buffer.Len() + HEADER_SIZE + attrs.length());
 			if (t_size < WORK_ITEM_BUFFER_SIZE_MED) {
-				workq_med.push(workitem_struct_med(attrs, buffer));
+				bool test = workq_med.push(workitem_struct_med(attrs, buffer));
+				if(profile_tcplog) {
+					if(med_size > (QUEUE_CAPACITY_MED*75)/100) {
+						std::cout << "workq_med size above 75% (" << med_size << ")" << std::endl;
+					}
+					if(test)
+						med_size++;
+				}
 			} else if (t_size < WORK_ITEM_BUFFER_SIZE_LARGE) {
-				workq_large.push(workitem_struct_large(attrs, buffer));
+				bool test = workq_large.push(workitem_struct_large(attrs, buffer));
+				if(profile_tcplog) {
+					if(lrg_size > (QUEUE_CAPACITY_LARGE*75)/100) {
+						std::cout << "workq_large size above 75% (" << lrg_size << ")" << std::endl;
+					}
+					if (test)
+						lrg_size++;
+				}
 			} else {
 				ret = false;
 			}
@@ -250,6 +265,7 @@ private:
     		ss << "{\"probe\": " << BifConst::PS_tcplog::probeid->CheckString() << ", \"envid\": " << BifConst::PS_tcplog::envid->CheckString() << ", \"log\": \"ps_tcplog_session\"}";
     		sessionHeader.AddRaw(ss.str());
     		workitem_struct_med sessionHeaderMessage("", sessionHeader);
+    		med_size++;
     		boost::asio::write(socket_,	boost::asio::buffer(sessionHeaderMessage.buf, sessionHeaderMessage.len), error);
     		if (error) {
     			asioError(error);
@@ -287,17 +303,30 @@ private:
 				while (connection_active_) {
 
 					bool noWork = true;
+					size_t wrlen = 0;
 
 					if (workq_med.pop(val)) {
 						noWork = false;
-						boost::asio::write(socket_,	boost::asio::buffer(val.buf, val.len), error);
+						wrlen = boost::asio::write(socket_,	boost::asio::buffer(val.buf, val.len), error);
+						if(profile_tcplog){
+							med_size--;
+							if(wrlen != val.len) {
+								std::cout << "PS_tcplog - workq_med write length mismatch " << wrlen << " " << val.len << std::endl;
+							}
+						}
 						if (error) {
 							asioError(error);
 						}
 					}
 					if (workq_large.pop(val2)) {
 						noWork = false;
-						boost::asio::write(socket_,	boost::asio::buffer(val2.buf, val2.len), error);
+						wrlen = boost::asio::write(socket_,	boost::asio::buffer(val2.buf, val2.len), error);
+						if(profile_tcplog) {
+							lrg_size--;
+							if(wrlen != val2.len) {
+								std::cout << "PS_tcplog - workq_large write length mismatch " << wrlen << " " << val2.len << std::endl;
+							}
+						}
 						if (error) {
 							asioError(error);
 						}
@@ -329,6 +358,8 @@ private:
 	bool session_active_;
 	bool drain_and_done_;
 	boost::thread run_thread_;
+	bool profile_tcplog;
+	size_t med_size, lrg_size;
 };
 }
 }

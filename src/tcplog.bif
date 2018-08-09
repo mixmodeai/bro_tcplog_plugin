@@ -23,3 +23,4 @@ const probeid: string;
 const envid: string;
 const enabled: bool;
 const logfiles: bool;
+const profile_tcplog: bool;

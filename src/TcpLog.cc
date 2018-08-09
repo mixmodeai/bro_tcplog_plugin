@@ -51,6 +51,22 @@ bool TcpLog::DoInit(const WriterInfo& info, int num_fields,
 				<< GetTableType(field->type, field->subtype) << endl;
 	}
 	schema_file.close();
+	profile_tcplog = BifConst::PS_tcplog::profile_tcplog?true:false;
+	bytesSent = 0;
+	bytesDropped = 0;
+	num_profile = 0;
+	secondCountDown = 0;
+	range[num_profile++].range_max = 1024;
+	range[num_profile++].range_max = 2*1024;
+	range[num_profile++].range_max = 4*1024;
+	range[num_profile++].range_max = 16*1024;
+	range[num_profile++].range_max = 256*1024;
+	range[num_profile++].range_max = 512*1024;
+	range[num_profile++].range_max = 1024*1024;
+	range[num_profile++].range_max = 2*1024*1024;
+	range[num_profile++].range_max = 4*1024*1024;
+	range[num_profile++].range_max = 8*1024*1024;
+	range[num_profile++].range_max = 16*1024*1024;
 	return true;
 }
 
@@ -68,9 +84,41 @@ bool TcpLog::DoWrite(int num_fields, const threading::Field* const * fields,
 		ODesc buffer;
 		json->Describe(&buffer, num_fields, fields, vals);
 
+		int t_size = (buffer.Len() + HEADER_SIZE + path.length());
+		if(profile_tcplog) {
+			for(size_t i = 0; i < NUM_RANGE; i++)
+			{
+				if(!range[i].range_max)
+				{
+					Info(Fmt("Message outside of profile range - %d %d %d", t_size, t_size/1024, t_size/(1024*1024)));
+					if(num_profile < NUM_RANGE) {
+						range[i].range_max = range[i-1].range_max*2;
+						num_profile++;
+					}
+				}
+				if((size_t)t_size <= range[i].range_max )
+				{
+					range[i].range_cnt++;
+					if((size_t)t_size > range[i].range_lmt)
+						range[i].range_lmt = (size_t)t_size;
+					range[i].range_avg += (size_t)t_size;
+					break;
+				}
+			}
+		}
 		if(session->write(path, buffer) == false) {
-			int t_size = (buffer.Len() + HEADER_SIZE + path.length());
-			Error(Fmt("TcpLog::DoWrite...session->write: Dropping data - Size: %d", t_size));
+			char szBuf[50];
+			memset(szBuf, 0, sizeof(szBuf));
+			if(profile_tcplog) {
+				memcpy(szBuf, buffer.Bytes(), sizeof(szBuf)-2);
+				szBuf[sizeof(szBuf) - 1] = '\n';
+			}
+			Error(Fmt("TcpLog::DoWrite...session->write: Dropping data - Size: %d %s", t_size, szBuf));
+			bytesDropped += t_size;
+		}
+		else
+		{
+			bytesSent += t_size;
 		}
 	}
 	return true;
@@ -87,6 +135,24 @@ bool TcpLog::DoSetBuf(bool enabled) {
 }
 
 bool TcpLog::DoHeartbeat(double network_time, double current_time) {
+	if(profile_tcplog) {
+		if(bytesDropped) {
+			Info(Fmt("BytesSent - %d, BytesDropped %d", bytesSent, bytesDropped));
+			bytesSent = 0;
+			bytesDropped = 0;
+		}
+		if(!secondCountDown)
+		{
+			for(size_t i = 0; i < num_profile; i++)
+			{
+				if( range[i].range_cnt)
+					Info(Fmt("range %10lu,%010lu,%010lu,%010lu", range[i].range_max, range[i].range_cnt, 
+						range[i].range_avg/range[i].range_cnt, range[i].range_lmt));
+			}
+			secondCountDown = 15;
+		}
+		secondCountDown--;
+	}
 	return true;
 }
 

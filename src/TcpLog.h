@@ -29,7 +29,14 @@
 
 namespace logging {
 namespace writer {
-
+class msg_profile {
+public:
+	msg_profile() : range_max(0), range_cnt(0), range_avg(0), range_lmt(0) {}
+	size_t range_max;
+	size_t range_cnt;
+	size_t range_avg;
+	size_t range_lmt;
+};
 class TcpLog: public WriterBackend {
 public:
 	TcpLog(WriterFrontend* frontend,
@@ -54,6 +61,12 @@ private:
 	threading::formatter::JSON *json;
 	boost::shared_ptr</**/::plugin::PS_tcplog::TcpSession> session;
 	std::string path;
+	bool profile_tcplog;
+	int bytesSent, bytesDropped;
+	enum { NUM_RANGE = 64 };
+	msg_profile range[NUM_RANGE];
+	size_t num_profile;
+	size_t secondCountDown;
 };
 
 }
