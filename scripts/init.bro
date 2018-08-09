@@ -44,7 +44,7 @@ export {
         global TCPLOG_PLUGIN: bool = T &redef;
 
         ## Profile output enable
-        const profile_tcplog = F & redef;
+        const profile_tcplog = F &redef;
 }
 
 redef PS_tcplog::enabled = ( Cluster::local_node_type() == Cluster::LOGGER || Cluster::local_node_type() == Cluster::NONE );
