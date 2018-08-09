@@ -117,9 +117,9 @@ public:
 		tv.tv_sec  = timeout_ms / 1000;
 		tv.tv_usec = timeout_ms % 1000;
 
-		setsockopt(socket_.native(), SOL_SOCKET, SO_RCVTIMEO,  &tv, sizeof(tv));
-		setsockopt(socket_.native(), SOL_SOCKET, SO_SNDTIMEO,  &tv, sizeof(tv));
-		setsockopt(socket_.native(), SOL_SOCKET, SO_KEEPALIVE, &tv, sizeof(tv));
+		setsockopt(socket_.native_handle(), SOL_SOCKET, SO_RCVTIMEO,  &tv, sizeof(tv));
+		setsockopt(socket_.native_handle(), SOL_SOCKET, SO_SNDTIMEO,  &tv, sizeof(tv));
+		setsockopt(socket_.native_handle(), SOL_SOCKET, SO_KEEPALIVE, &tv, sizeof(tv));
 	}
 
 	~TcpSession() {
