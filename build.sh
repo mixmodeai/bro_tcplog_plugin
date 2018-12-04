@@ -1,9 +1,6 @@
 #!/bin/bash
 
-if [ -z "$ROOTDIR" ] ; then
-	echo ROOTDIR must be defined prior to calling ${0}
-	exit 1
-fi
+ROOTDIR=$(git rev-parse --show-toplevel)
 
 set -e
 FULLPATH=$(dirname $(readlink -f $0))
