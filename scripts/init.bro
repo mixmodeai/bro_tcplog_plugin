@@ -18,7 +18,9 @@
 
 @load base/frameworks/cluster
 @load policy/misc/loaded-scripts
+@if ( Version::number < 20600 )
 @load base/frameworks/communication
+@endif
 
 module PS_tcplog;
 
@@ -52,7 +54,9 @@ redef PS_tcplog::probeid = getenv("PROBE_ID");
 
 event bro_init() &priority=-5
         {
+@if ( Version::number < 20600 )
         Log::disable_stream(Communication::LOG);
+@endif
         for ( sid in Log::active_streams )
                 {
                 if( sid !in excluded_log_ids ) {
