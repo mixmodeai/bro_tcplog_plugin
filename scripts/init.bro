@@ -18,6 +18,7 @@
 
 @load base/frameworks/cluster
 @load policy/misc/loaded-scripts
+@load base/misc/version
 @if ( Version::number < 20600 )
 @load base/frameworks/communication
 @endif
